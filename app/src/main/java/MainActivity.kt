@@ -61,8 +61,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizlet.ui.library.FolderLibraryScreen
+import com.example.quizlet.ui.library.FolderViewModel
+import com.example.quizlet.ui.library.FolderViewModelFactory
 import com.example.quizlet.ui.theme.QuizletTheme
 
 class MainActivity : ComponentActivity() {
@@ -307,6 +312,17 @@ fun LibraryScreen(
                         RecentQuizItem(quiz = quiz, onClick = { onStudySetClick(quiz) })
                     }
                 }
+            }
+            LibraryFilter.Folders -> {
+                val context = LocalContext.current
+                val app = context.applicationContext as QuizletApplication
+                val folderViewModel: FolderViewModel = viewModel(
+                    factory = FolderViewModelFactory(app.folderRepository)
+                )
+                FolderLibraryScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    viewModel = folderViewModel
+                )
             }
             else -> {
                 LibraryEmptyState(filter = selectedFilter)

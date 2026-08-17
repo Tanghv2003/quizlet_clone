@@ -3,6 +3,7 @@
           xmlns:tools="http://schemas.android.com/tools">
 
     <application
+            android:name=".QuizletApplication"
             android:allowBackup="true"
             android:dataExtractionRules="@xml/data_extraction_rules"
             android:fullBackupContent="@xml/backup_rules"
@@ -22,31 +23,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <activity
-                android:name=".SearchActivity"
-                android:exported="false"
-                android:theme="@style/Theme.Quizlet" />
-
-        <activity
-                android:name=".CreateActivity"
-                android:exported="false"
-                android:theme="@style/Theme.Quizlet" />
-
-        <activity
-                android:name=".LibraryActivity"
-                android:exported="false"
-                android:theme="@style/Theme.Quizlet" />
-
-        <activity
-                android:name=".ProfileActivity"
-                android:exported="false"
-                android:theme="@style/Theme.Quizlet" />
-
-        <activity
-                android:name=".FlashcardActivity"
-                android:exported="false"
-                android:theme="@style/Theme.Quizlet" />
 
     </application>
 
