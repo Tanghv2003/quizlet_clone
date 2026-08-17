@@ -47,13 +47,16 @@ class LectureDetailViewModel(
             _lectureTitle.value = lecture.title
             val content = repository.getLectureContent(lectureId)
             val parsed = LectureContentHelper.parseItems(content)
-            val all = if (parsed.isNotEmpty()) parsed else LectureContentHelper.parseItems(LectureContentHelper.sampleJson)
-            _items.value = all
+            _items.value = parsed
             
             currentProgress = progressStore.loadProgress(lectureId)
             _cardProgressMap.value = currentProgress.cardProgressMap
-            updateDueItems(all)
+            updateDueItems(parsed)
         }
+    }
+
+    fun clearAllItems() {
+        saveItemsCompletely(emptyList())
     }
 
     private fun updateDueItems(all: List<FlashcardItem>) {

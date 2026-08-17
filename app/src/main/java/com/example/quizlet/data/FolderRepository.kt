@@ -54,7 +54,7 @@ class FolderRepository(
             createdAt = now,
             updatedAt = now
         )
-        contentStore.saveContent(lecture.id, LectureContentHelper.sampleJson)
+        contentStore.saveContent(lecture.id, "[]")
         store.mutate { root -> updateFolder(root, folderId) { it.copy(lectures = it.lectures + lecture) } }
     }
 

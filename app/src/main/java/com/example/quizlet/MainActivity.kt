@@ -80,6 +80,7 @@ import com.example.quizlet.ui.study.LectureDetailScreen
 import com.example.quizlet.ui.study.LectureDetailViewModel
 import com.example.quizlet.ui.study.LectureDetailViewModelFactory
 import com.example.quizlet.ui.study.QuizScreen
+import com.example.quizlet.ui.study.BlastScreen
 import com.example.quizlet.ui.study.SpacedRepetitionScreen
 import com.example.quizlet.ui.theme.QuizletTheme
 
@@ -398,6 +399,17 @@ fun LibraryScreen(
                             val content = app.folderRepository.getLectureContent(lecture.id)
                             val items = LectureContentHelper.parseItems(content)
                             QuizScreen(
+                                items = items,
+                                onBack = {
+                                    selectedLecture = null
+                                    currentAction = null
+                                }
+                            )
+                        }
+                        LectureAction.BLAST, LectureAction.MATCH -> {
+                            val content = app.folderRepository.getLectureContent(lecture.id)
+                            val items = LectureContentHelper.parseItems(content)
+                            BlastScreen(
                                 items = items,
                                 onBack = {
                                     selectedLecture = null

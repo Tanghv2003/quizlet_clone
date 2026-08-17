@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.quizlet.data.FlashcardItem
 import com.example.quizlet.data.LectureContentHelper
+import com.example.quizlet.utils.SoundManager
+import com.example.quizlet.utils.rememberTextToSpeech
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +34,7 @@ fun LectureDetailScreen(
     var editingIndex by remember { mutableStateOf<Int?>(null) }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val tts = rememberTextToSpeech()
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -56,6 +59,7 @@ fun LectureDetailScreen(
 
         AlertDialog(
             onDismissRequest = {
+                SoundManager.playClick()
                 showAddDialog = false
                 editingIndex = null
             },
@@ -79,6 +83,7 @@ fun LectureDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        SoundManager.playClick()
                         if (foreignText.isNotBlank() && nativeText.isNotBlank()) {
                             if (isEditing) {
                                 onEditItem(editingIndex!!, foreignText, nativeText)
@@ -98,6 +103,7 @@ fun LectureDetailScreen(
             dismissButton = {
                 TextButton(
                     onClick = {
+                        SoundManager.playClick()
                         showAddDialog = false
                         editingIndex = null
                     }
@@ -112,7 +118,10 @@ fun LectureDetailScreen(
     if (showImportDialog) {
         var jsonInput by remember { mutableStateOf(LectureContentHelper.sampleJson) }
         AlertDialog(
-            onDismissRequest = { showImportDialog = false },
+            onDismissRequest = {
+                SoundManager.playClick()
+                showImportDialog = false
+            },
             title = { Text("Import từ JSON") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -130,6 +139,7 @@ fun LectureDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        SoundManager.playClick()
                         if (onImportJson(jsonInput).isSuccess) {
                             snackbarMessage = "Import thành công!"
                             showImportDialog = false
@@ -142,7 +152,10 @@ fun LectureDetailScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) {
+                TextButton(onClick = {
+                    SoundManager.playClick()
+                    showImportDialog = false
+                }) {
                     Text("Hủy")
                 }
             }
@@ -154,15 +167,24 @@ fun LectureDetailScreen(
             CenterAlignedTopAppBar(
                 title = { Text(lectureTitle, maxLines = 1) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        SoundManager.playClick()
+                        onBack()
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showImportDialog = true }) {
+                    IconButton(onClick = {
+                        SoundManager.playClick()
+                        showImportDialog = true
+                    }) {
                         Icon(Icons.Default.FileDownload, contentDescription = null)
                     }
-                    IconButton(onClick = { showAddDialog = true }) {
+                    IconButton(onClick = {
+                        SoundManager.playClick()
+                        showAddDialog = true
+                    }) {
                         Icon(Icons.Default.Add, contentDescription = null)
                     }
                 }
@@ -222,11 +244,19 @@ fun LectureDetailScreen(
                                 }
                                 Row {
                                     IconButton(onClick = {
+                                        SoundManager.playClick()
+                                        tts.speak(item.foreign, isForeign = true)
+                                    }) {
+                                        Icon(Icons.Default.VolumeUp, contentDescription = "Nghe")
+                                    }
+                                    IconButton(onClick = {
+                                        SoundManager.playClick()
                                         editingIndex = index
                                     }) {
                                         Icon(Icons.Default.Edit, contentDescription = "Sửa")
                                     }
                                     IconButton(onClick = {
+                                        SoundManager.playClick()
                                         onDeleteItem(index)
                                         snackbarMessage = "Đã xóa"
                                     }) {

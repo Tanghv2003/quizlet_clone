@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.sp
 import com.example.quizlet.data.FlashcardItem
 import com.example.quizlet.data.SpacedRepetitionData
 import kotlin.random.Random
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 enum class StudyQuestionType {
     QUIZ, WRITE
@@ -368,44 +371,64 @@ fun SpacedRepetitionScreen(
                         }
                     }
                 } else {
-                    OutlinedTextField(
-                        value = typedAnswer,
-                        onValueChange = { if (!isAnswered) typedAnswer = it },
-                        label = { Text("Nhập câu trả lời") },
-                        singleLine = true,
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = if (isAnswered) {
-                            if (isCorrectAnswer) {
-                                OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.error,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        } else {
-                            OutlinedTextFieldDefaults.colors()
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    if (!isAnswered) {
-                        Button(
-                            onClick = {
-                                if (typedAnswer.isNotBlank()) {
-                                    isCorrectAnswer = typedAnswer.trim().lowercase() == correctAnswer.trim().lowercase()
-                                    isAnswered = true
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = typedAnswer,
+                            onValueChange = { if (!isAnswered) typedAnswer = it },
+                            label = { Text("Nhập câu trả lời") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !isAnswered,
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = if (isAnswered) ImeAction.Next else ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    if (typedAnswer.isNotBlank() && !isAnswered) {
+                                        isCorrectAnswer = typedAnswer.trim().lowercase() == correctAnswer.trim().lowercase()
+                                        isAnswered = true
+                                    }
                                 }
-                            },
-                            enabled = typedAnswer.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Kiểm tra")
+                            ),
+                            colors = if (isAnswered) {
+                                if (isCorrectAnswer) {
+                                    OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        disabledBorderColor = MaterialTheme.colorScheme.primary,
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                } else {
+                                    OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.error,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.error,
+                                        disabledBorderColor = MaterialTheme.colorScheme.error,
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            } else {
+                                OutlinedTextFieldDefaults.colors()
+                            }
+                        )
+
+                        if (!isAnswered) {
+                            Button(
+                                onClick = {
+                                    if (typedAnswer.isNotBlank()) {
+                                        isCorrectAnswer = typedAnswer.trim().lowercase() == correctAnswer.trim().lowercase()
+                                        isAnswered = true
+                                    }
+                                },
+                                enabled = typedAnswer.isNotBlank(),
+                                modifier = Modifier.height(56.dp)
+                            ) {
+                                Text("Check")
+                            }
                         }
                     }
                 }
