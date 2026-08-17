@@ -67,7 +67,7 @@ private sealed class DialogState {
 fun FolderLibraryScreen(
     modifier: Modifier = Modifier,
     viewModel: FolderViewModel,
-    onLectureSelected: (String, LectureData) -> Unit   // đã đổi tên
+    onLectureSelected: (String, LectureData) -> Unit
 ) {
     val pathStack by viewModel.pathStack.collectAsState()
     val subfolders by viewModel.subfolders.collectAsState()
@@ -136,6 +136,7 @@ fun FolderLibraryScreen(
                     items(lectures, key = { "lecture_${it.id}" }) { lecture ->
                         LectureRow(
                             lecture = lecture,
+                            viewModel = viewModel,
                             onRename = { dialogState = DialogState.RenameLecture(lecture) },
                             onDelete = { dialogState = DialogState.DeleteLecture(lecture) },
                             onLectureSelected = { onLectureSelected(currentFolderId, lecture) }
@@ -275,11 +276,13 @@ private fun FolderRow(
 @Composable
 private fun LectureRow(
     lecture: LectureData,
+    viewModel: FolderViewModel,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onLectureSelected: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val itemCount = viewModel.getItemCount(lecture.id)
 
     Card(
         modifier = Modifier
@@ -304,6 +307,12 @@ private fun LectureRow(
                 fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "$itemCount từ",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp)
             )
             Box {
                 IconButton(onClick = { showMenu = true }) {

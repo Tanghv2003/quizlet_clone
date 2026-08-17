@@ -38,6 +38,7 @@ enum class LectureAction {
 @Composable
 fun LectureOptionsBottomSheet(
     lecture: LectureData,
+    path: String,
     onAction: (LectureAction) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -56,6 +57,12 @@ fun LectureOptionsBottomSheet(
             Text(
                 text = lecture.title,
                 style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Text(
+                text = path,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             OptionItem(

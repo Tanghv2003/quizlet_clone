@@ -24,6 +24,12 @@ class LectureDetailViewModel(
     private val _items = MutableStateFlow<List<FlashcardItem>>(emptyList())
     val items: StateFlow<List<FlashcardItem>> = _items.asStateFlow()
 
+    private val _dueItems = MutableStateFlow<List<FlashcardItem>>(emptyList())
+    val dueItems: StateFlow<List<FlashcardItem>> = _dueItems.asStateFlow()
+
+    private val _cardProgressMap = MutableStateFlow<Map<String, SpacedRepetitionData>>(emptyMap())
+    val cardProgressMap: StateFlow<Map<String, SpacedRepetitionData>> = _cardProgressMap.asStateFlow()
+
     private val _lectureTitle = MutableStateFlow("")
     val lectureTitle: StateFlow<String> = _lectureTitle.asStateFlow()
 
@@ -39,13 +45,38 @@ class LectureDetailViewModel(
         val lecture = folder?.lectures?.find { it.id == lectureId }
         if (lecture != null) {
             _lectureTitle.value = lecture.title
-            val parsed = LectureContentHelper.parseItems(lecture.content)
-            val initial = if (parsed.isEmpty()) {
-                LectureContentHelper.parseItems(LectureContentHelper.sampleJson)
+            val content = repository.getLectureContent(lectureId)
+            val parsed = LectureContentHelper.parseItems(content)
+            val all = if (parsed.isNotEmpty()) parsed else LectureContentHelper.parseItems(LectureContentHelper.sampleJson)
+            _items.value = all
+            
+            currentProgress = progressStore.loadProgress(lectureId)
+            _cardProgressMap.value = currentProgress.cardProgressMap
+            updateDueItems(all)
+        }
+    }
+
+    private fun updateDueItems(all: List<FlashcardItem>) {
+        val now = System.currentTimeMillis()
+        _dueItems.value = all.filter { item ->
+            val cardProgress = currentProgress.cardProgressMap[item.foreign]
+            if (cardProgress == null) {
+                true
+            } else if (cardProgress.repetitions < 2) {
+                true
             } else {
-                parsed
+                cardProgress.nextReviewTime <= now
             }
-            _items.value = initial
+        }
+    }
+
+    fun saveItemsCompletely(newItems: List<FlashcardItem>) {
+        _items.value = newItems
+        val contentJson = LectureContentHelper.serializeItems(newItems)
+        repository.updateLectureContent(lectureId, contentJson)
+        updateDueItems(newItems)
+    }
+
     fun addItem(foreign: String, native: String) {
         if (foreign.isBlank() || native.isBlank()) return
         val updated = _items.value + FlashcardItem(foreign.trim(), native.trim())
@@ -86,9 +117,19 @@ class LectureDetailViewModel(
         var ease = existing.easeFactor
 
         when (rating) {
-            0 -> { reps = 0; interval = 1.0; ease = max(1.3, ease - 0.2) }
-            1 -> { reps += 1; interval = if (reps == 1) 1.0 else interval * ease }
-            2 -> { reps += 1; interval = if (reps == 1) 2.0 else interval * ease * 1.3 }
+            0 -> {
+                reps = 0
+                interval = 1.0
+                ease = max(1.3, ease - 0.2)
+            }
+            1 -> {
+                reps += 1
+                interval = if (reps == 1) 1.0 else interval * ease
+            }
+            2 -> {
+                reps += 1
+                interval = if (reps == 1) 2.0 else interval * ease * 1.3
+            }
         }
 
         val nextTime = now + (interval * 24 * 60 * 60 * 1000).toLong()
@@ -107,6 +148,10 @@ class LectureDetailViewModel(
             lastStudiedAt = now
         )
         progressStore.saveProgress(currentProgress)
+        _cardProgressMap.value = updatedMap
+        
+        // Cập nhật lại list dueItems
+        updateDueItems(_items.value)
     }
 }
 
@@ -122,16 +167,3 @@ class LectureDetailViewModelFactory(
         return LectureDetailViewModel(repository, store, folderId, lectureId) as T
     }
 }
-
-            if (parsed.isEmpty()) {
-                saveItemsCompletely(initial)
-            }
-        }
-        currentProgress = progressStore.loadProgress(lectureId)
-    }
-
-    fun saveItemsCompletely(newItems: List<FlashcardItem>) {
-        _items.value = newItems
-        val contentJson = LectureContentHelper.serializeItems(newItems)
-        repository.updateLectureContent(folderId, lectureId, contentJson)
-    }

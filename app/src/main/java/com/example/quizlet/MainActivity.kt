@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
@@ -50,6 +52,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,16 +61,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizlet.data.LectureContentHelper
+import com.example.quizlet.data.LectureData
 import com.example.quizlet.ui.library.FolderLibraryScreen
 import com.example.quizlet.ui.library.FolderViewModel
 import com.example.quizlet.ui.library.FolderViewModelFactory
+import com.example.quizlet.ui.library.LectureAction
+import com.example.quizlet.ui.library.LectureOptionsBottomSheet
+import com.example.quizlet.ui.study.FlashcardStudyScreen
+import com.example.quizlet.ui.study.LectureDetailScreen
+import com.example.quizlet.ui.study.LectureDetailViewModel
+import com.example.quizlet.ui.study.LectureDetailViewModelFactory
+import com.example.quizlet.ui.study.QuizScreen
+import com.example.quizlet.ui.study.SpacedRepetitionScreen
 import com.example.quizlet.ui.theme.QuizletTheme
 
 class MainActivity : ComponentActivity() {
@@ -82,7 +95,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ----- Các tab dưới cùng -----
+// ----- Các tab -----
 enum class BottomTab(val label: String, val icon: ImageVector) {
     Home("Home", Icons.Filled.Home),
     Search("Search", Icons.Filled.Search),
@@ -91,25 +104,19 @@ enum class BottomTab(val label: String, val icon: ImageVector) {
     Profile("Profile", Icons.Filled.Person)
 }
 
-// Navigation screens
 sealed class Screen {
     data class Tab(val tab: BottomTab) : Screen()
     data class Flashcard(val term: String, val definition: String) : Screen()
 }
 
-// Data for a study set
-data class StudySet(val title: String, val description: String, val term: String, val definition: String)
-
-// Data for a recent quiz
 data class RecentQuiz(
     val title: String,
     val questionsCount: Int,
-    val status: String, // "Completed" or "Incomplete"
+    val status: String,
     val term: String,
     val definition: String
 )
 
-// Sample data
 private val sampleCategories = listOf("Math", "Chemistry", "Physics")
 private val recentQuizzes = listOf(
     RecentQuiz("Biology", 12, "Completed", "Cell", "Basic unit of life"),
@@ -120,7 +127,6 @@ private val recentQuizzes = listOf(
 @Composable
 fun QuizletApp() {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Tab(BottomTab.Home)) }
-    // Nhớ tab đang chọn để tô sáng đúng icon dưới thanh nav
     var selectedTab by remember { mutableStateOf(BottomTab.Home) }
 
     Scaffold(
@@ -251,7 +257,6 @@ fun PlaceholderTabScreen(modifier: Modifier = Modifier, title: String, message: 
     }
 }
 
-// ----- Các mục lọc trong Library, giống thanh chip của Quizlet -----
 enum class LibraryFilter(val label: String, val icon: ImageVector) {
     StudySets("Học phần", Icons.Filled.List),
     Classes("Lớp học", Icons.Filled.Groups),
@@ -265,6 +270,20 @@ fun LibraryScreen(
     onStudySetClick: (RecentQuiz) -> Unit
 ) {
     var selectedFilter by remember { mutableStateOf(LibraryFilter.StudySets) }
+    var selectedLecture by remember { mutableStateOf<Pair<String, LectureData>?>(null) }
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var currentAction by remember { mutableStateOf<LectureAction?>(null) }
+
+    val context = LocalContext.current
+    val app = context.applicationContext as QuizletApplication
+    val folderViewModel: FolderViewModel = viewModel(
+        factory = FolderViewModelFactory(app.folderRepository)
+    )
+
+    fun handleAction(action: LectureAction) {
+        showBottomSheet = false
+        currentAction = action
+    }
 
     Column(
         modifier = modifier
@@ -281,7 +300,6 @@ fun LibraryScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Thanh chip lọc, cuộn ngang giống Quizlet
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -300,7 +318,6 @@ fun LibraryScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Nội dung theo mục đang được chọn
         when (selectedFilter) {
             LibraryFilter.StudySets -> {
                 LazyColumn(
@@ -314,20 +331,115 @@ fun LibraryScreen(
                 }
             }
             LibraryFilter.Folders -> {
-                val context = LocalContext.current
-                val app = context.applicationContext as QuizletApplication
-                val folderViewModel: FolderViewModel = viewModel(
-                    factory = FolderViewModelFactory(app.folderRepository)
-                )
-                FolderLibraryScreen(
-                    modifier = Modifier.fillMaxSize(),
-                    viewModel = folderViewModel
-                )
+                if (selectedLecture != null && currentAction != null) {
+                    val (folderId, lecture) = selectedLecture!!
+                    when (currentAction) {
+                        LectureAction.EDIT -> {
+                            val viewModel: LectureDetailViewModel = viewModel(
+                                factory = LectureDetailViewModelFactory(
+                                    context,
+                                    app.folderRepository,
+                                    folderId,
+                                    lecture.id
+                                )
+                            )
+                            val items by viewModel.items.collectAsState()
+                            val title by viewModel.lectureTitle.collectAsState()
+                            LectureDetailScreen(
+                                lectureTitle = title,
+                                items = items,
+                                onBack = {
+                                    selectedLecture = null
+                                    currentAction = null
+                                },
+                                onAddItem = { foreign, native -> viewModel.addItem(foreign, native) },
+                                onEditItem = { index, foreign, native -> viewModel.editItem(index, foreign, native) },
+                                onDeleteItem = { index -> viewModel.deleteItem(index) },
+                                onImportJson = { json -> viewModel.importFromJson(json) }
+                            )
+                        }
+                        LectureAction.FLASHCARD -> {
+                            val content = app.folderRepository.getLectureContent(lecture.id)
+                            val items = LectureContentHelper.parseItems(content)
+                            FlashcardStudyScreen(
+                                items = items,
+                                onBack = {
+                                    selectedLecture = null
+                                    currentAction = null
+                                }
+                            )
+                        }
+                        LectureAction.SPACED_REPETITION -> {
+                            val viewModel: LectureDetailViewModel = viewModel(
+                                factory = LectureDetailViewModelFactory(
+                                    context,
+                                    app.folderRepository,
+                                    folderId,
+                                    lecture.id
+                                )
+                            )
+                            val allItems by viewModel.items.collectAsState()
+                            val dueItems by viewModel.dueItems.collectAsState()
+                            SpacedRepetitionScreen(
+                                dueItems = dueItems,
+                                allItems = allItems,
+                                onReviewCard = { foreign, rating -> viewModel.reviewCard(foreign, rating) },
+                                onBack = {
+                                    selectedLecture = null
+                                    currentAction = null
+                                }
+                            )
+                        }
+                        LectureAction.QUIZ -> {
+                            val content = app.folderRepository.getLectureContent(lecture.id)
+                            val items = LectureContentHelper.parseItems(content)
+                            QuizScreen(
+                                items = items,
+                                onBack = {
+                                    selectedLecture = null
+                                    currentAction = null
+                                }
+                            )
+                        }
+                        else -> {
+                            PlaceholderScreen(
+                                message = "Chức năng ${currentAction?.name} đang phát triển",
+                                onBack = {
+                                    selectedLecture = null
+                                    currentAction = null
+                                }
+                            )
+                        }
+                    }
+                } else {
+                    FolderLibraryScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        viewModel = folderViewModel,
+                        onLectureSelected = { folderId, lecture ->
+                            selectedLecture = Pair(folderId, lecture)
+                            showBottomSheet = true
+                        }
+                    )
+                }
             }
             else -> {
                 LibraryEmptyState(filter = selectedFilter)
             }
         }
+    }
+
+    if (showBottomSheet && selectedLecture != null) {
+        val (folderId, lecture) = selectedLecture!!
+        val path = folderViewModel.getLecturePath(folderId, lecture.id)
+        LectureOptionsBottomSheet(
+            lecture = lecture,
+            path = path,
+            onAction = { action -> handleAction(action) },
+            onDismiss = {
+                showBottomSheet = false
+                selectedLecture = null
+            }
+        )
     }
 }
 
@@ -415,7 +527,6 @@ fun HomeScreen(
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Greeting and points
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -437,7 +548,7 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .clickable { /* maybe open leaderboard */ },
+                    .clickable { /* leaderboard */ },
                 contentAlignment = Alignment.Center
             ) {
                 Card(
@@ -460,8 +571,6 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Search bar
         OutlinedTextField(
             value = "",
             onValueChange = {},
@@ -472,8 +581,6 @@ fun HomeScreen(
         )
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        // "Play and Win" card
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -514,8 +621,6 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        // Categories section
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -531,13 +636,11 @@ fun HomeScreen(
                 text = "See all",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { /* navigate to all categories */ }
+                modifier = Modifier.clickable { /* navigate */ }
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Category chips
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -567,8 +670,6 @@ fun HomeScreen(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        // Recent section
         Text(
             text = "Recent",
             fontSize = 18.sp,
@@ -577,8 +678,6 @@ fun HomeScreen(
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // List of recent quizzes
         recentQuizzes.forEach { quiz ->
             RecentQuizItem(
                 quiz = quiz,
@@ -617,7 +716,6 @@ fun RecentQuizItem(quiz: RecentQuiz, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            // Status badge
             Card(
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
@@ -689,21 +787,36 @@ fun FlashcardScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
             onClick = { isFlipped = !isFlipped },
             modifier = Modifier.size(width = 150.dp, height = 50.dp)
         ) {
             Text(if (isFlipped) "Show Term" else "Show Definition")
         }
-
         Spacer(modifier = Modifier.height(12.dp))
-
         Text(
             text = "Card 1 of 1",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+fun PlaceholderScreen(
+    message: String,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(text = message, fontSize = 18.sp, textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onBack) {
+            Text("Quay lại")
+        }
     }
 }
 

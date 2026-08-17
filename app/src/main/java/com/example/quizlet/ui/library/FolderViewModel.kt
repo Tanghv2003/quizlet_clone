@@ -18,9 +18,10 @@ import kotlinx.coroutines.launch
 
 class FolderViewModel(private val repository: FolderRepository) : ViewModel() {
 
-    // Chỉ lưu ID trên đường đi (breadcrumb) - tên/nội dung luôn lấy tươi từ cây mới nhất
     private val pathIds = MutableStateFlow(listOf(ROOT_FOLDER_ID))
-    private val currentFolderId: StateFlow<String> =
+
+    // Expose currentFolderId
+    val currentFolderId: StateFlow<String> =
         pathIds.map { it.last() }.stateIn(viewModelScope, SharingStarted.Eagerly, ROOT_FOLDER_ID)
 
     val pathStack: StateFlow<List<FolderData>> = combine(repository.rootFlow, pathIds) { root, ids ->
@@ -52,7 +53,6 @@ class FolderViewModel(private val repository: FolderRepository) : ViewModel() {
         pathIds.value = ids.take(index + 1)
     }
 
-    /** Nút back -> lùi lên 1 cấp. Trả về false nếu đã ở root. */
     fun goUp(): Boolean {
         if (pathIds.value.size <= 1) return false
         pathIds.value = pathIds.value.dropLast(1)
@@ -85,6 +85,14 @@ class FolderViewModel(private val repository: FolderRepository) : ViewModel() {
 
     fun deleteLecture(lecture: LectureData) = viewModelScope.launch {
         repository.deleteLecture(currentFolderId.value, lecture.id)
+    }
+
+    fun getItemCount(lectureId: String): Int {
+        return repository.getLectureItemCount(lectureId)
+    }
+
+    fun getLecturePath(folderId: String, lectureId: String): String {
+        return repository.getLecturePath(folderId, lectureId)
     }
 
     fun clearError() {
