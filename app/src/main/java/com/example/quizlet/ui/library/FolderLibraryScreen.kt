@@ -52,7 +52,6 @@ import androidx.compose.ui.unit.sp
 import com.example.quizlet.data.FolderData
 import com.example.quizlet.data.LectureData
 
-// Loại mục đang được thao tác trong các dialog (thêm/sửa/xóa)
 private sealed class DialogState {
     data object None : DialogState()
     data object AddFolder : DialogState()
@@ -67,18 +66,20 @@ private sealed class DialogState {
 @Composable
 fun FolderLibraryScreen(
     modifier: Modifier = Modifier,
-    viewModel: FolderViewModel
+    viewModel: FolderViewModel,
+    onLectureSelected: (String, LectureData) -> Unit   // đã đổi tên
 ) {
     val pathStack by viewModel.pathStack.collectAsState()
     val subfolders by viewModel.subfolders.collectAsState()
     val lectures by viewModel.lectures.collectAsState()
+    val currentFolderId by viewModel.currentFolderId.collectAsState()
 
     var dialogState by remember { mutableStateOf<DialogState>(DialogState.None) }
     var showAddMenu by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // ----- Breadcrumb kiểu "Thư mục gốc > Toán > Chương 1" -----
+            // Breadcrumb
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -109,7 +110,6 @@ fun FolderLibraryScreen(
                 }
             }
 
-            // ----- Danh sách thư mục con + bài giảng -----
             if (subfolders.isEmpty() && lectures.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
@@ -137,14 +137,15 @@ fun FolderLibraryScreen(
                         LectureRow(
                             lecture = lecture,
                             onRename = { dialogState = DialogState.RenameLecture(lecture) },
-                            onDelete = { dialogState = DialogState.DeleteLecture(lecture) }
+                            onDelete = { dialogState = DialogState.DeleteLecture(lecture) },
+                            onLectureSelected = { onLectureSelected(currentFolderId, lecture) }
                         )
                     }
                 }
             }
         }
 
-        // ----- Nút thêm mới (thư mục / bài giảng) -----
+        // FAB
         Box(modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
             FloatingActionButton(onClick = { showAddMenu = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Thêm mới")
@@ -170,7 +171,7 @@ fun FolderLibraryScreen(
         }
     }
 
-    // ----- Các dialog thêm / sửa / xóa -----
+    // Các dialog
     when (val state = dialogState) {
         DialogState.AddFolder -> NameInputDialog(
             title = "Thư mục mới",
@@ -258,7 +259,6 @@ private fun FolderRow(
                         leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                         onClick = { showMenu = false; onRename() }
                     )
-                    // Thư mục ROOT (id == "root") không cho phép xóa
                     if (!folder.isRoot) {
                         DropdownMenuItem(
                             text = { Text("Xóa") },
@@ -276,12 +276,15 @@ private fun FolderRow(
 private fun LectureRow(
     lecture: LectureData,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onLectureSelected: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onLectureSelected() },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
