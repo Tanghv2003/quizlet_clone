@@ -286,148 +286,150 @@ fun LibraryScreen(
         currentAction = action
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(vertical = 12.dp)
-    ) {
-        Text(
-            text = "Thư viện của tôi",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LibraryFilter.entries.forEach { filter ->
-                LibraryFilterChip(
-                    label = filter.label,
-                    selected = selectedFilter == filter,
-                    onClick = { selectedFilter = filter }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        when (selectedFilter) {
-            LibraryFilter.StudySets -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(recentQuizzes) { quiz ->
-                        RecentQuizItem(quiz = quiz, onClick = { onStudySetClick(quiz) })
-                    }
+    if (selectedLecture != null && currentAction != null) {
+        val (folderId, lecture) = selectedLecture!!
+        Box(modifier = modifier.fillMaxSize()) {
+            when (currentAction) {
+                LectureAction.EDIT -> {
+                    val viewModel: LectureDetailViewModel = viewModel(
+                        key = "lecture_detail_${folderId}_${lecture.id}",
+                        factory = LectureDetailViewModelFactory(
+                            context,
+                            app.folderRepository,
+                            folderId,
+                            lecture.id
+                        )
+                    )
+                    val items by viewModel.items.collectAsState()
+                    val title by viewModel.lectureTitle.collectAsState()
+                    LectureDetailScreen(
+                        lectureTitle = title,
+                        items = items,
+                        onBack = {
+                            selectedLecture = null
+                            currentAction = null
+                        },
+                        onAddItem = { foreign, native -> viewModel.addItem(foreign, native) },
+                        onEditItem = { index, foreign, native -> viewModel.editItem(index, foreign, native) },
+                        onDeleteItem = { index -> viewModel.deleteItem(index) },
+                        onImportJson = { json -> viewModel.importFromJson(json) }
+                    )
+                }
+                LectureAction.FLASHCARD -> {
+                    val content = app.folderRepository.getLectureContent(lecture.id)
+                    val items = LectureContentHelper.parseItems(content)
+                    FlashcardStudyScreen(
+                        items = items,
+                        onBack = {
+                            selectedLecture = null
+                            currentAction = null
+                        }
+                    )
+                }
+                LectureAction.SPACED_REPETITION -> {
+                    val viewModel: LectureDetailViewModel = viewModel(
+                        key = "lecture_detail_${folderId}_${lecture.id}",
+                        factory = LectureDetailViewModelFactory(
+                            context,
+                            app.folderRepository,
+                            folderId,
+                            lecture.id
+                        )
+                    )
+                    val allItems by viewModel.items.collectAsState()
+                    val dueItems by viewModel.dueItems.collectAsState()
+                    val cardProgressMap by viewModel.cardProgressMap.collectAsState()
+                    SpacedRepetitionScreen(
+                        dueItems = dueItems,
+                        allItems = allItems,
+                        cardProgressMap = cardProgressMap,
+                        onReviewCard = { foreign, rating -> viewModel.reviewCard(foreign, rating) },
+                        onBack = {
+                            selectedLecture = null
+                            currentAction = null
+                        }
+                    )
+                }
+                LectureAction.QUIZ -> {
+                    val content = app.folderRepository.getLectureContent(lecture.id)
+                    val items = LectureContentHelper.parseItems(content)
+                    QuizScreen(
+                        items = items,
+                        onBack = {
+                            selectedLecture = null
+                            currentAction = null
+                        }
+                    )
+                }
+                LectureAction.BLAST, LectureAction.MATCH -> {
+                    val content = app.folderRepository.getLectureContent(lecture.id)
+                    val items = LectureContentHelper.parseItems(content)
+                    BlastScreen(
+                        items = items,
+                        onBack = {
+                            selectedLecture = null
+                            currentAction = null
+                        }
+                    )
+                }
+                else -> {
+                    PlaceholderScreen(
+                        message = "Chức năng ${currentAction?.name} đang phát triển",
+                        onBack = {
+                            selectedLecture = null
+                            currentAction = null
+                        }
+                    )
                 }
             }
-            LibraryFilter.Folders -> {
-                if (selectedLecture != null && currentAction != null) {
-                    val (folderId, lecture) = selectedLecture!!
-                    when (currentAction) {
-                        LectureAction.EDIT -> {
-                            val viewModel: LectureDetailViewModel = viewModel(
-                                key = "lecture_detail_${folderId}_${lecture.id}",
-                                factory = LectureDetailViewModelFactory(
-                                    context,
-                                    app.folderRepository,
-                                    folderId,
-                                    lecture.id
-                                )
-                            )
-                            val items by viewModel.items.collectAsState()
-                            val title by viewModel.lectureTitle.collectAsState()
-                            LectureDetailScreen(
-                                lectureTitle = title,
-                                items = items,
-                                onBack = {
-                                    selectedLecture = null
-                                    currentAction = null
-                                },
-                                onAddItem = { foreign, native -> viewModel.addItem(foreign, native) },
-                                onEditItem = { index, foreign, native -> viewModel.editItem(index, foreign, native) },
-                                onDeleteItem = { index -> viewModel.deleteItem(index) },
-                                onImportJson = { json -> viewModel.importFromJson(json) }
-                            )
-                        }
-                        LectureAction.FLASHCARD -> {
-                            val content = app.folderRepository.getLectureContent(lecture.id)
-                            val items = LectureContentHelper.parseItems(content)
-                            FlashcardStudyScreen(
-                                items = items,
-                                onBack = {
-                                    selectedLecture = null
-                                    currentAction = null
-                                }
-                            )
-                        }
-                        LectureAction.SPACED_REPETITION -> {
-                            val viewModel: LectureDetailViewModel = viewModel(
-                                key = "lecture_detail_${folderId}_${lecture.id}",
-                                factory = LectureDetailViewModelFactory(
-                                    context,
-                                    app.folderRepository,
-                                    folderId,
-                                    lecture.id
-                                )
-                            )
-                            val allItems by viewModel.items.collectAsState()
-                            val dueItems by viewModel.dueItems.collectAsState()
-                            val cardProgressMap by viewModel.cardProgressMap.collectAsState()
-                            SpacedRepetitionScreen(
-                                dueItems = dueItems,
-                                allItems = allItems,
-                                cardProgressMap = cardProgressMap,
-                                onReviewCard = { foreign, rating -> viewModel.reviewCard(foreign, rating) },
-                                onBack = {
-                                    selectedLecture = null
-                                    currentAction = null
-                                }
-                            )
-                        }
-                        LectureAction.QUIZ -> {
-                            val content = app.folderRepository.getLectureContent(lecture.id)
-                            val items = LectureContentHelper.parseItems(content)
-                            QuizScreen(
-                                items = items,
-                                onBack = {
-                                    selectedLecture = null
-                                    currentAction = null
-                                }
-                            )
-                        }
-                        LectureAction.BLAST, LectureAction.MATCH -> {
-                            val content = app.folderRepository.getLectureContent(lecture.id)
-                            val items = LectureContentHelper.parseItems(content)
-                            BlastScreen(
-                                items = items,
-                                onBack = {
-                                    selectedLecture = null
-                                    currentAction = null
-                                }
-                            )
-                        }
-                        else -> {
-                            PlaceholderScreen(
-                                message = "Chức năng ${currentAction?.name} đang phát triển",
-                                onBack = {
-                                    selectedLecture = null
-                                    currentAction = null
-                                }
-                            )
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp)
+        ) {
+            Text(
+                text = "Thư viện của tôi",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LibraryFilter.entries.forEach { filter ->
+                    LibraryFilterChip(
+                        label = filter.label,
+                        selected = selectedFilter == filter,
+                        onClick = { selectedFilter = filter }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            when (selectedFilter) {
+                LibraryFilter.StudySets -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(recentQuizzes) { quiz ->
+                            RecentQuizItem(quiz = quiz, onClick = { onStudySetClick(quiz) })
                         }
                     }
-                } else {
+                }
+                LibraryFilter.Folders -> {
                     FolderLibraryScreen(
                         modifier = Modifier.fillMaxSize(),
                         viewModel = folderViewModel,
@@ -437,9 +439,9 @@ fun LibraryScreen(
                         }
                     )
                 }
-            }
-            else -> {
-                LibraryEmptyState(filter = selectedFilter)
+                else -> {
+                    LibraryEmptyState(filter = selectedFilter)
+                }
             }
         }
     }

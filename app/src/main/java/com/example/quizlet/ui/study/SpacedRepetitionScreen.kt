@@ -83,8 +83,11 @@ fun SpacedRepetitionScreen(
             val batch = remainingItems.take(5)
             remainingItems = remainingItems.drop(5)
             activeQueue = batch.map { item ->
-                // 90% Write (Điền từ), 10% Quiz (Trắc nghiệm)
-                val format = if (Random.nextFloat() < 0.10f) StudyQuestionType.QUIZ else StudyQuestionType.WRITE
+                // Thuật toán tiệm tiến tương tự Quizlet:
+                // - Từ mới chưa học (repetitions = 0): Hiện câu hỏi Trắc nghiệm (QUIZ) để làm quen.
+                // - Từ đang học hoặc đã nắm vững (repetitions >= 1): Hiện câu hỏi Điền từ (WRITE) để ghi nhớ.
+                val reps = cardProgressMap[item.foreign]?.repetitions ?: 0
+                val format = if (reps == 0) StudyQuestionType.QUIZ else StudyQuestionType.WRITE
                 StudyCardState(
                     item = item,
                     questionType = format
@@ -178,7 +181,7 @@ fun SpacedRepetitionScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Định dạng: 90% Điền từ, 10% Trắc nghiệm",
+                            text = "Định dạng: Trắc nghiệm (từ mới) & Điền từ (từ đã quen)",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -255,6 +258,15 @@ fun SpacedRepetitionScreen(
                             Text("Quay lại thư viện")
                         }
                     }
+                }
+            } else if (activeQueue.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
             } else {
                 val currentCard = activeQueue.first()
@@ -471,11 +483,12 @@ fun SpacedRepetitionScreen(
                                         completedCount++
                                         activeQueue = activeQueue.drop(1)
                                     } else {
-                                        // Toggle question format (90% Write, 10% Quiz) and append to back of queue
-                                        val nextType = if (Random.nextFloat() < 0.10f)
+                                        // Nếu trả lời sai câu viết (WRITE), hạ cấp xuống trắc nghiệm (QUIZ) để học sinh dễ nhớ lại
+                                        val nextType = if (currentCard.questionType == StudyQuestionType.WRITE) {
                                             StudyQuestionType.QUIZ
-                                        else
-                                            StudyQuestionType.WRITE
+                                        } else {
+                                            StudyQuestionType.QUIZ
+                                        }
                                         val updatedCard = currentCard.copy(
                                             firstTryCorrect = false,
                                             questionType = nextType
