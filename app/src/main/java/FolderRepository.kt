@@ -68,6 +68,17 @@ class FolderRepository(private val store: JsonLibraryStore) {
             }
         }
     }
+    fun updateLectureContent(folderId: String, lectureId: String, newContent: String) {
+        store.mutate { root ->
+            updateFolder(root, folderId) { folder ->
+                folder.copy(lectures = folder.lectures.map { lecture ->
+                    if (lecture.id == lectureId) lecture.copy(content = newContent, updatedAt = System.currentTimeMillis())
+                    else lecture
+                })
+            }
+        }
+    }
+
 
     // ----- Các hàm đệ quy thao tác trên cây bất biến (immutable tree) -----
 
