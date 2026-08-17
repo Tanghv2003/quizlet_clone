@@ -336,6 +336,7 @@ fun LibraryScreen(
                     when (currentAction) {
                         LectureAction.EDIT -> {
                             val viewModel: LectureDetailViewModel = viewModel(
+                                key = "lecture_detail_${folderId}_${lecture.id}",
                                 factory = LectureDetailViewModelFactory(
                                     context,
                                     app.folderRepository,
@@ -371,6 +372,7 @@ fun LibraryScreen(
                         }
                         LectureAction.SPACED_REPETITION -> {
                             val viewModel: LectureDetailViewModel = viewModel(
+                                key = "lecture_detail_${folderId}_${lecture.id}",
                                 factory = LectureDetailViewModelFactory(
                                     context,
                                     app.folderRepository,
