@@ -57,7 +57,7 @@ fun LearningStatusTag(repetitions: Int) {
 fun SpacedRepetitionScreen(
     dueItems: List<FlashcardItem>,
     allItems: List<FlashcardItem>,
-    cardProgressMap: Map<String, SpacedRepetitionData>,
+    cardProgressMap: Map<String, SpacedRepetitionData> = emptyMap(),
     onReviewCard: (String, Int) -> Unit,
     onBack: () -> Unit
 ) {

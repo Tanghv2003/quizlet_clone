@@ -380,9 +380,11 @@ fun LibraryScreen(
                             )
                             val allItems by viewModel.items.collectAsState()
                             val dueItems by viewModel.dueItems.collectAsState()
+                            val cardProgressMap by viewModel.cardProgressMap.collectAsState()
                             SpacedRepetitionScreen(
                                 dueItems = dueItems,
                                 allItems = allItems,
+                                cardProgressMap = cardProgressMap,
                                 onReviewCard = { foreign, rating -> viewModel.reviewCard(foreign, rating) },
                                 onBack = {
                                     selectedLecture = null
